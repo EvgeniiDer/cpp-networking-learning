@@ -83,11 +83,11 @@ nlohmann::json AethelredCore::calculate_all_indicators()
 	nlohmann::json indicators;
 
 	
-	//calculate_rsi(closes, indicators);
-	//calculate_ema(closes, indicators);
-	//calculate_adx_di(highs, lows, closes, indicators);
-	//calculate_atr(highs, lows, closes, indicators);
-	//calculate_breakout(closes, indicators);
+	calculate_rsi(closes, indicators);
+	calculate_ema(closes, indicators);
+	calculate_adx_di(highs, lows, closes, indicators);
+	culculate_atr(highs, lows, closes, indicators);
+	calculate_breakout(closes, indicators);
 
 	return indicators;
 }
