@@ -28,11 +28,13 @@ private:
 	void handle_request();
 	nlohmann::json process_add_candle(const nlohmann::json& candle_date);
 	nlohmann::json calculate_all_indicators();
-	void calculate_rsi(const std::vector<double>& close, nlohmann::json& indicators, int period = 14);
-	void calculate_ema(const std::vector<double>& close, nlohmann::json& indicators, int period = 38);
-	void calculate_adx(const std::vector<double>& hights, const std::vector<double>& lows,
+	void calculate_rsi(const std::vector<double>& closes, nlohmann::json& indicators, int period = 14);
+	void calculate_ema(const std::vector<double>& closes, nlohmann::json& indicators, int period = 38);
+	void calculate_adx_di(const std::vector<double>& hights, const std::vector<double>& lows,
 		const std::vector<double>& closes, nlohmann::json& inicators, int period = 14);
+	void culculate_atr(const std::vector<double>& highs, const std::vector<double>& lows, const std::vector<double>& closes, nlohmann::json& indicators, int period = 14);
+	void calculate_breakout(const std::vector<double>& closes, nlohmann::json& indicators, int period = 20);
 public:
-	AethelredCore(const std::string& bind_addres);
+	AethelredCore(const std::string& bind_address);
 	void run();
 };
