@@ -1,9 +1,13 @@
+# ========================
+# Visual Studio / C++
+# ========================
 
+# Папки, генерируемые пользователем и IDE
 .vs/
 *.suo
 *.user
 
-
+# Папки со сборками
 build/
 bin/
 obj/
@@ -14,7 +18,7 @@ x86/
 [Dd]ebug/
 [Rr]elease/
 
-
+# Исполняемые файлы и библиотеки
 *.exe
 *.dll
 *.lib
@@ -27,6 +31,9 @@ x86/
 *.lastbuildstate
 *.idb
 
+# ========================
+# CMake
+# ========================
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
