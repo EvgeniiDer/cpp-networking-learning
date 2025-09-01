@@ -5,46 +5,66 @@
 
 
 
-AethelredCore::AethelredCore(const std::string& bind_address) : context(1)
+AethelredCore::AethelredCore(const std::string& sub_connect_address, const std::string& pub_bind_address) : context(1)
 {
-	socket = zmq::socket_t(context, zmq::socket_type::rep);
-	std::cout << "[INFO] Aethelred.core connecting to " << bind_address << "..." << std::endl;
-	socket.bind(bind_address);
+	subscriber = zmq::socket_t(context, zmq::socket_type::sub);
+	publisher = zmq::socket_t(context, zmq::socket_type::pub);
+	std::cout << "[INFO] Aethelred.core connecting to Gateway at " << sub_connect_address << "..." << std::endl;
+	subscriber.connect(sub_connect_address);
+	const std::string topic = "CANDLE_DATA";
+	subscriber.set(zmq::sockopt::subscribe, topic);
+	std::cout << "[INFO] Subscribed to topic: '" << topic << "'" << std::endl;
+
+	
+	std::cout << "[INFO] Aethelred.core binding publisher to " << pub_bind_address << "..." << std::endl;
+	publisher.bind(pub_bind_address);
 }
 
 void AethelredCore::run()
 {
-	std::cout << "[INFO] Core is running. Waiting for events..." << std::endl;
+	std::cout << "[INFO] Core is running. Waiting for candle data from Gateway..." << std::endl;
 	while (true)
 	{
-		handle_request();
-	}
-}
-void AethelredCore::handle_request()
-{
-	zmq::message_t request;
-	socket.recv(request, zmq::recv_flags::none);
-	nlohmann::json response;
-	try {
-		nlohmann::json received_json = nlohmann::json::parse(static_cast<char*>(request.data()), static_cast<char*>(request.data()) + request.size());
-		if (received_json.value("event", "") == "ADD_CANDLE")
-		{
-			response = process_add_candle(received_json["data"]);
+		try {
+			zmq::message_t topic_msg;
+			subscriber.recv(topic_msg, zmq::recv_flags::none);
+
+			zmq::message_t data_msg;
+			subscriber.recv(data_msg, zmq::recv_flags::none);
+
+			nlohmann::json received_json = nlohmann::json::parse(static_cast<char*>(data_msg.data()), static_cast<char*>(data_msg.data()) + data_msg.size());
+			if (received_json.value("event", "") == "ADD_CANDLE")
+			{
+				std::optional<nlohmann::json> indicators_opt = process_new_candle(received_json["data"]);
+				if (indicators_opt)
+				{
+					nlohmann::json& indicators = *indicators_opt;
+					indicators["close"] = candle_history.back().close;
+
+					std::string indicators_str = indicators.dump();
+
+					const std::string indicators_topic = "INDICATORS";
+					publisher.send(zmq::buffer(indicators_topic), zmq::send_flags::sndmore);
+					publisher.send(zmq::buffer(indicators_str), zmq::send_flags::none);
+
+					std::cout << "[PUB] Published indicators. RSI: " << indicators.value("rsi", 0.0) << std::endl;
+				}
+			}
 		}
-		else
+		catch (const zmq::error_t& e) {
+			std::cerr << "[ZMQ ERROR] " << e.what() << std::endl;
+			
+			std::this_thread::sleep_for(std::chrono::seconds(1));
+		}
+		catch (const std::exception& e)
 		{
-			throw std::runtime_error("Unknown event type: " + received_json.value("event", "N/A"));
+			std::cerr << "[ERROR] " << e.what() << std::endl;
 		}
 	}
-	catch (const std::exception& e)
-	{
-		std::cerr << "[ERROR] " << e.what() << std::endl;
-		response["status"] = "error";
-		response["message"] = e.what();
-	}
-	socket.send(zmq::buffer(response.dump()), zmq::send_flags::none);
+	
 }
-nlohmann::json AethelredCore::process_add_candle(const nlohmann::json& candle_data)
+
+std::optional<nlohmann::json> AethelredCore::process_new_candle(const nlohmann::json& candle_data)
 {
 	candle_history.push_back({
 		candle_data.value("Open", 0.0),
@@ -60,12 +80,11 @@ nlohmann::json AethelredCore::process_add_candle(const nlohmann::json& candle_da
 	std::cout << "[DEBUG] Added candle. History size: " << candle_history.size() << std::endl;
 	if (candle_history.size() < MIN_DATA_FOR_CALC)
 	{
-		throw std::runtime_error("Not enough history data.");
+		std::cout << "[INFO] Not enough history data to calculate indicators. Need " << MIN_DATA_FOR_CALC << ", have " << candle_history.size() << "." << std::endl;
+		return std::nullopt; 
 	}
-	nlohmann::json response;
-	response["status"] = "success";
-	response["indicators"] = calculate_all_indicators();
-	return response;
+
+	return calculate_all_indicators();
 }
 
 nlohmann::json AethelredCore::calculate_all_indicators()
@@ -75,7 +94,7 @@ nlohmann::json AethelredCore::calculate_all_indicators()
 	lows.reserve(candle_history.size());
 	closes.reserve(candle_history.size());
 	for (const auto& c : candle_history) {
-		highs.push_back(c.hight);
+		highs.push_back(c.high);
 		lows.push_back(c.low);
 		closes.push_back(c.close);
 	}
@@ -86,7 +105,7 @@ nlohmann::json AethelredCore::calculate_all_indicators()
 	calculate_rsi(closes, indicators);
 	calculate_ema(closes, indicators);
 	calculate_adx_di(highs, lows, closes, indicators);
-	culculate_atr(highs, lows, closes, indicators);
+	calculate_atr(highs, lows, closes, indicators);
 	calculate_breakout(closes, indicators);
 
 	return indicators;
@@ -110,7 +129,7 @@ void AethelredCore::calculate_ema(const std::vector<double>& closes, nlohmann::j
 		indicators["ema"] = out[out_nb_element - 1];
 	}
 }
-void AethelredCore::culculate_atr(const std::vector<double>& highs, const std::vector<double>& lows, const std::vector<double>& closes, nlohmann::json& indicators, int period)
+void AethelredCore::calculate_atr(const std::vector<double>& highs, const std::vector<double>& lows, const std::vector<double>& closes, nlohmann::json& indicators, int period)
 {
 	std::vector<double> out(closes.size());
 	int out_begin, out_nb_element;
@@ -121,11 +140,11 @@ void AethelredCore::culculate_atr(const std::vector<double>& highs, const std::v
 
 void AethelredCore::calculate_breakout(const std::vector<double>& closes, nlohmann::json& indicators, int period /* = 20 */)
 {
-	if (closes.size() < period - 1)
+	if (closes.size() < period)
 		return;
 	double highest = 0.0;
 	double lowest = std::numeric_limits<double>::max();
-	for (size_t i = closes.size() - 2; i >= closes.size() - 1 - period; --i)
+	for (size_t i = closes.size() - period - 1; i < closes.size() - 1; ++i)
 	{
 		if (closes[i] > highest) highest = closes[i];
 		if (closes[i] < lowest) lowest = closes[i];
@@ -133,7 +152,8 @@ void AethelredCore::calculate_breakout(const std::vector<double>& closes, nlohma
 	indicators["highest_break"] = highest;
 	indicators["lowest_break"] = lowest;
 }
-void AethelredCore::calculate_adx_di(const std::vector<double>& highs, const std::vector<double>& lows, const std::vector<double>& closes, nlohmann::json& indicators, int period)
+void AethelredCore::calculate_adx_di(const std::vector<double>& highs, const std::vector<double>& lows,
+	const std::vector<double>& closes, nlohmann::json& indicators, int period)
 {
 	std::vector<double>out(closes.size());
 	int out_begin, out_nb_element;
