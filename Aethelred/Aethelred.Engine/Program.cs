@@ -46,12 +46,8 @@ namespace Aethelred.StrategyEngine
                     while (true)
                         {
                         
-                       subscriber.ReceiveFrameString();
-
-                       
+                        subscriber.ReceiveFrameString();         
                         string receivedJson = subscriber.ReceiveFrameString();
-
-
                         IndicatorData indicators = JsonConvert.DeserializeObject<IndicatorData>(receivedJson);
                         ProcessStrategy(indicators);
                         }
@@ -71,7 +67,7 @@ namespace Aethelred.StrategyEngine
             bool isRanging = !isTrending;
 
             bool isBullish = indicators.close > indicators.ema;
-            bool isbrarish = indicators.close < indicators.ema;
+            bool isBearish = indicators.close < indicators.ema;
 
             if(_isPositionOpen)
                 {
@@ -98,7 +94,8 @@ namespace Aethelred.StrategyEngine
                     _isPositionOpen = true;
                     _entryType = "RSI";
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] [ACTION] +++ ОТКРЫТЬ ДЛИННУЮ ПОЗИЦИЮ (RSI) +++ | ADX: {indicators.adx:F2}, RSI: {indicators.rsi:F2}");
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] [A" +
+                        $"CTION] +++ ОТКРЫТЬ ДЛИННУЮ ПОЗИЦИЮ (RSI) +++ | ADX: {indicators.adx:F2}, RSI: {indicators.rsi:F2}");
                     Console.ResetColor();
                     return; // Выходим из метода, чтобы не проверить другие условия входа на этой же свече
                     }

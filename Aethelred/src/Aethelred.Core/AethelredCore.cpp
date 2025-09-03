@@ -38,6 +38,9 @@ void AethelredCore::run()
 				std::optional<nlohmann::json> indicators_opt = process_new_candle(received_json["data"]);
 				if (indicators_opt)
 				{
+					/*
+					* indicators_opt is not a JSON object itself. It is a "box" (std::optional) that can contain a JSON object. To access the contents of this box, you must use special "unpacking" operators: * or ->.
+					*/
 					nlohmann::json& indicators = *indicators_opt;
 					indicators["close"] = candle_history.back().close;
 
@@ -49,6 +52,9 @@ void AethelredCore::run()
 
 					std::cout << "[PUB] Published indicators. RSI: " << indicators.value("rsi", 0.0) << std::endl;
 				}
+				/*else{
+					continue; Не рекомендовано плюс к ясности минус к избыточности кода
+				}*/
 			}
 		}
 		catch (const zmq::error_t& e) {
