@@ -47,6 +47,7 @@ namespace Aethelred.Gateway
             {
             JObject json = new JObject();
             json = JObject.Parse(msg.Text);
+
             if (json["topic"] != null && json["topic"].ToString().StartsWith("kline"))
                 {
                 JArray candlArray = (JArray)json["data"];
@@ -62,6 +63,7 @@ namespace Aethelred.Gateway
                 innerData["Low"] = (double)candleInfo["low"];
                 innerData["Close"] = (double)candleInfo["close"];
                 innerData["Volume"] = (double)candleInfo["volume"];
+                
 
                 aethleredCandl["data"] = innerData;
                 string messageToSent = aethleredCandl.ToString(Formatting.None);

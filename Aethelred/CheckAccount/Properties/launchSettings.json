@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "CheckAccount": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "BYBIT_API_KEY": "AaWBGeOXT7xGSuZGmd",
+        "BYBIT_API_SECRET": "I3DlY9etguwVTjP1oyWicHhxKNcAre1uiami"
+      }
+    }
+  }
+}

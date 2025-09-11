@@ -146,12 +146,21 @@ void AethelredCore::calculate_atr(const std::vector<double>& highs, const std::v
 
 void AethelredCore::calculate_breakout(const std::vector<double>& closes, nlohmann::json& indicators, int period /* = 20 */)
 {
-	if (closes.size() < period)
+	if (closes.size() < period + 1)
 		return;
 	double highest = 0.0;
 	double lowest = std::numeric_limits<double>::max();
-	for (size_t i = closes.size() - period - 1; i < closes.size() - 1; ++i)
+	/*for (size_t i = closes.size() - period - 1; i < closes.size() - 1; ++i)
 	{
+		if (closes[i] > highest) highest = closes[i];
+		if (closes[i] < lowest) lowest = closes[i];
+	}*/
+	int start_index = std::max(0, static_cast<int>(closes.size()) - period - 1);
+	int end_index = closes.size() - 2;
+	for (int i = end_index; i >= start_index; --i)
+	{
+		if (i < 0) break; // Защита от выхода за границы
+
 		if (closes[i] > highest) highest = closes[i];
 		if (closes[i] < lowest) lowest = closes[i];
 	}
